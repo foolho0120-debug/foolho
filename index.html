@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>豪希默契大考驗</title>
+    <style>
+        :root { --primary: #ffb7c5; --secondary: #ff4081; --bg: #fff5f7; }
+        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--bg); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 15px; }
+        #quiz-container { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); max-width: 500px; width: 100%; text-align: center; }
+        .btn-group { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
+        
+        /* 增加按鈕的觸控反應 */
+        button { 
+            padding: 16px; 
+            border: none; 
+            border-radius: 30px; 
+            background: var(--primary); 
+            color: white; 
+            font-size: 1.1em; 
+            cursor: pointer; 
+            font-weight: bold;
+            touch-action: manipulation;
+            transition: background 0.2s;
+        }
+        button:active { background: var(--secondary); transform: scale(0.98); }
+        
+        .option-btn { background: #fff; color: #444; border: 2px solid #f0f0f0; }
+        .option-btn:active { background: #fff0f5; border-color: var(--primary); }
+        
+        #quiz-content, #result-screen { display: none; }
+        .progress { color: #888; font-size: 0.85em; margin-bottom: 10px; }
+        .question { font-size: 1.2em; font-weight: bold; margin-bottom: 25px; color: #333; line-height: 1.5; min-height: 3em; display: flex; align-items: center; justify-content: center; }
+        .score-display { font-size: 4em; color: var(--secondary); font-weight: bold; margin: 10px 0; }
+    </style>
+</head>
+<body>
+
+<div id="quiz-container">
+    <div id="start-screen">
+        <h1 style="color:var(--secondary); margin-bottom:5px;">豪希默契大考驗</h1>
+        <p style="color:#888; margin-bottom:25px;">40 題挑戰 (每題 2.5 分)</p>
+        <div class="btn-group">
+            <button type="button" id="btn-female">我是女方 (希寶)</button>
+            <button type="button" id="btn-male">我是男方 (帥豪)</button>
+        </div>
+    </div>
+
+    <div id="quiz-content">
+        <div class="progress" id="progress-text">1 / 40</div>
+        <div class="question" id="question-text">載入中...</div>
+        <div id="options-container" class="btn-group"></div>
+    </div>
+
+    <div id="result-screen">
+        <h1>測驗結束</h1>
+        <div class="score-display" id="final-score">0</div>
+        <p id="comment-text" style="font-weight:bold;"></p>
+        <button type="button" onclick="location.reload()">重新挑戰</button>
+    </div>
+</div>
+
+<script>
+// 確保手機版 DOM 完全載入後才執行
+document.addEventListener('DOMContentLoaded', function() {
+    
+    // 這裡放入題目資料 (省略重複內容以精簡，但邏輯不變)
+    const commonQuestions = [
+        {q: "【2023/04/06】西門町初瓦約會，希寶原本先轉給帥豪多少錢？", a: ["500元", "800元", "1000元", "1200元"], c: 2},
+        {q: "【2023/04/06】初瓦吃完後，帥豪最後「找還」給希寶多少錢？", a: ["560元", "440元", "320元", "600元"], c: 0},
+        {q: "兩人曾在對話中嫌棄哪一站下方的「醜蝴蝶」藝術品很醜？", a: ["十四張站", "新和國小站", "安康站", "小碧潭站"], c: 1},
+        {q: "【2023/04/15】帥豪失眠那天凌晨，希寶是在哪家 KTV 夜唱？", a: ["錢櫃", "好樂迪", "超級巨星", "星聚點"], c: 3},
+        {q: "帥豪把希寶封為「情勒王」是因為他覺得希寶常說？", a: ["你都不陪我", "好喔你忙", "那我走", "隨便你"], c: 1},
+        {q: "希寶自稱是什麼「系」代表，表示非常記仇？", a: ["法律系", "記仇系", "記恨系", "心理系"], c: 1},
+        {q: "兩人約好要一起去逛盲盒店的夜市是？", a: ["饒河夜市", "士林夜市", "南勢角夜市", "樂華夜市"], c: 3},
+        {q: "希寶覺得吃飯很累，是因為【2023/04/06】那天吃了什麼太飽？", a: ["火鍋", "漢堡", "麵包", "燒肉"], c: 2},
+        {q: "希寶自稱什麼附體，所以非常愛睡覺？", a: ["豬靈", "睡袋", "懶惰蟲", "周公"], c: 0},
+        {q: "希寶說如果要清理她的房間，帥豪要開什麼去？", a: ["垃圾車", "鏟土機", "壓路機", "救護車"], c: 1},
+        {q: "帥豪曾說希寶不理人的時候很像哪個驚悚角色？", a: ["安娜貝爾", "富江", "貞子", "伽椰子"], c: 1},
+        {q: "兩人曾開玩笑說開飛機的話誰要當飛行員？", a: ["帥豪", "希寶", "弟弟", "自動駕駛"], c: 1},
+        {q: "帥豪曾笑希寶看起來像是會在哪種場合工作的女子？", a: ["幼兒園", "廟會", "八大", "圖書館"], c: 2},
+        {q: "希寶提到的「安和路」家裡，其實是在哪一區？", a: ["中和", "新店安坑", "新莊", "內湖"], c: 1},
+        {q: "帥豪在【2023/03/23】對話中提到哪家店工作「制度超嚴」？", a: ["星巴克", "路易莎", "布佬", "初瓦"], c: 2},
+        {q: "希寶提到她在布佬的工作預計會做到幾月？", a: ["四月", "五月", "六月", "七月"], c: 2},
+        {q: "帥豪領到的 6000 元是匯入哪一家銀行？", a: ["中信", "國泰", "台新", "永豐"], c: 2},
+        {q: "帥豪在咖啡廳工作時，自嘲哪項技術一直學不好？", a: ["拉花", "手沖", "背菜單", "結帳"], c: 0},
+        {q: "帥豪曾說他的機車鑰匙有幾支在希寶那？", a: ["0支", "1支", "2支", "3支"], c: 1},
+        {q: "當帥豪爸爸問他在跟誰吃早餐，帥豪當下回答？", a: ["希寶", "女朋友", "同事", "一個人"], c: 2}
+    ];
+
+    const femaleQuestions = [
+        {q: "帥豪目前住的地方比較靠近哪裡？", a: ["深山", "中和", "內湖", "淡水"], c: 1},
+        {q: "帥豪推薦初瓦的哪一種口味思樂冰？", a: ["哈密瓜", "西瓜", "芒果", "葡萄"], c: 1},
+        {q: "【2023/04/10】帥豪懷疑誰翻了他的包包看到希寶照片？", a: ["他二姊", "他大姊", "他媽媽", "他爸爸"], c: 3},
+        {q: "帥豪的中信卡回饋降到多少他就不想用了？", a: ["0.5%", "1%", "2%", "3%"], c: 1},
+        {q: "【2023/04/15】帥豪失眠那天，他撐到早上幾點才睡著？", a: ["6點", "8點", "10點", "12點"], c: 0},
+        {q: "帥豪的二姊在哪家店買衣服買到紅標三件折扣？", a: ["UNIQLO", "NET", "GU", "ZARA"], c: 1},
+        {q: "帥豪領到 6000 元後的第一件事是？", a: ["請客", "存起來", "買遊戲", "還錢"], c: 1},
+        {q: "帥豪對於去吃初瓦，最期待的是哪一份中信券？", a: ["泡菜餅", "炸雞", "炸魚", "起司燒"], c: 2},
+        {q: "帥豪覺得希寶在哪個社交軟體回訊息最慢？", a: ["LINE", "Instagram", "FB", "WeChat"], c: 1},
+        {q: "帥豪領 6000 元的台新數位帳戶叫什麼？", a: ["Richart", "KOKO", "LineBank", "Bankee"], c: 0},
+        {q: "帥豪父母曾因為買什麼大吵？", a: ["襪子", "新衣服", "皮鞋", "手機"], c: 1},
+        {q: "帥豪常笑希寶是哪種類型的路人？", a: ["路痴", "三寶", "防撞桿", "行人地獄"], c: 1},
+        {q: "帥豪說去哪裡上班「不可能，太遠了」？", a: ["板橋", "安坑", "內湖", "淡水"], c: 2},
+        {q: "帥豪最常使用的第一個貼圖人物是？", a: ["熊大", "饅頭人", "兔兔", "詹姆士"], c: 1},
+        {q: "帥豪說他的台新 Richart 目前回饋是多少？", a: ["2.5%", "3.2%", "1%", "3.8%"], c: 1},
+        {q: "帥豪在【2023/04/15】對話中稱讚希寶剪什麼髮型？", a: ["短髮", "瀏海", "馬尾", "公主頭"], c: 1},
+        {q: "帥豪在【2023/03/23】提到他在布佬已經工作多久？", a: ["一週", "一個月", "三個月", "半年"], c: 1},
+        {q: "【2023/04/15】失眠那天，帥豪的拿鐵是在哪裡買的？", a: ["家附近", "工作地點", "西門町", "KTV"], c: 1},
+        {q: "帥豪對於希寶安坑住處的地理糾正是？", a: ["那是山區", "那是中和", "那是新店", "那是土城"], c: 1},
+        {q: "帥豪覺得希寶剪了瀏海後變得如何？", a: ["更呆了", "更年輕", "更漂亮", "沒感覺"], c: 1}
+    ];
+
+    const maleQuestions = [
+        {q: "【2023/04/13】希寶「自首」發生了哪件尷尬事？", a: ["認錯路人", "漏尿", "大便在褲子上", "放屁"], c: 2},
+        {q: "【2023/04/16】希寶拿到汽車駕照後，最想買的車是？", a: ["Mini", "特斯拉", "保時捷", "賓士"], c: 1},
+        {q: "希寶在【2023/03/23】提到，她在布佬會做到幾月？", a: ["四月", "五月", "六月", "七月"], c: 2},
+        {q: "希寶在家吃哪一種食物會「挑牌子」？", a: ["泡麵", "優格", "水餃", "衛生紙"], c: 2},
+        {q: "【2023/04/15】希寶弟弟因為不想面對誰而想離職？", a: ["笨阿姨", "慣老闆", "懶同事", "奧客"], c: 0},
+        {q: "希寶弟弟未來想找什麼樣性質的工作？", a: ["高薪", "出國", "見紅就休", "不用洗碗"], c: 2},
+        {q: "希寶最近很會「聽人家說」，那個人是？", a: ["她弟", "她媽", "帥豪", "同事"], c: 0},
+        {q: "希寶弟弟最近在學什麼，考慮台南職缺？", a: ["廚藝", "修圖", "金融", "外送"], c: 1},
+        {q: "希寶說她領到的 6000 元匯入哪家銀行？", a: ["郵局", "台新", "中信", "國泰"], c: 3},
+        {q: "【2023/04/15】希寶那天夜唱是唱到早上幾點？", a: ["3點", "6點", "8點", "10點"], c: 1},
+        {q: "夜唱完當天下午，希寶幾點才醒來？", a: ["12點", "14點", "15點", "16點"], c: 1},
+        {q: "希寶曾開玩笑說她是哪種女性的代表？", a: ["溫柔", "獨立", "記仇", "成功"], c: 2},
+        {q: "希寶對於要爬坡去「布佬」上班的感想是？", a: ["運動很好", "很累", "沒感覺", "想離職"], c: 1},
+        {q: "希寶說如果要開飛機，她要當？", a: ["機長", "空姐", "飛行員", "乘客"], c: 2},
+        {q: "【2023/04/06】希寶吃什麼吃到太飽，覺得吃飯很累？", a: ["麵包", "火鍋", "甜點", "燒肉"], c: 0},
+        {q: "希寶住的「安和路」家裡是在哪裡？", a: ["新莊", "中和", "安坑", "內湖"], c: 2},
+        {q: "希寶弟弟想轉往哪一個行業發展？", a: ["餐飲", "金融相關", "設計", "科技"], c: 1},
+        {q: "希寶說帥豪回哪裡的訊息速度比較快？", a: ["Facebook", "Instagram", "LINE", "電話"], c: 2},
+        {q: "希寶對於帥豪研究 6000 元回饋的評價是？", a: ["好聰明", "好閒喔", "沒意見", "我也要"], c: 1},
+        {q: "希寶覺得這份測驗她能拿幾分？", a: ["0分", "60分", "80分", "100分"], c: 3}
+    ];
+
+    let questions = [];
+    let currentIdx = 0;
+    let score = 0;
+
+    // 使用手機通用的監聽方式
+    document.getElementById('btn-female').addEventListener('click', () => startQuiz('female'));
+    document.getElementById('btn-male').addEventListener('click', () => startQuiz('male'));
+
+    function startQuiz(role) {
+        const personal = (role === 'female') ? femaleQuestions : maleQuestions;
+        questions = [...personal, ...commonQuestions];
+        document.getElementById("start-screen").style.display = "none";
+        document.getElementById("quiz-content").style.display = "block";
+        loadQuestion();
+    }
+
+    function loadQuestion() {
+        if (currentIdx >= 40) { showResult(); return; }
+        const q = questions[currentIdx];
+        document.getElementById("progress-text").innerText = (currentIdx + 1) + " / 40";
+        document.getElementById("question-text").innerText = q.q;
+        const container = document.getElementById("options-container");
+        container.innerHTML = "";
+        q.a.forEach((opt, i) => {
+            const btn = document.createElement("button");
+            btn.className = "option-btn";
+            btn.innerText = opt;
+            btn.addEventListener('click', function() {
+                if(i === q.c) score += 2.5;
+                currentIdx++;
+                loadQuestion();
+            });
+            container.appendChild(btn);
+        });
+        window.scrollTo(0,0); // 每一題自動回頂部
+    }
+
+    function showResult() {
+        document.getElementById("quiz-content").style.display = "none";
+        document.getElementById("result-screen").style.display = "block";
+        document.getElementById("final-score").innerText = score;
+        let comment = score >= 90 ? "靈魂伴侶！細節王是你！" : score >= 70 ? "很了解彼此喔！" : "看來需要再去約會重溫一下了！";
+        document.getElementById("comment-text").innerText = comment;
+    }
+});
+</script>
+</body>
+</html>
